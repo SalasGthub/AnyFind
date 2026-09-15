@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "id": "anyfind",
+  "version": "${version}",
+  "name": "AnyFind",
+  "description": "Buscador de items para tu zona de cofres: busca en una interfaz y te guia hasta el cofre.",
+  "authors": [
+    "salasgthub"
+  ],
+  "contact": {},
+  "license": "All-Rights-Reserved",
+  "icon": "assets/anyfind/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "fabric-datagen": [
+      "io.github.salasgthub.anyfind.client.AnyfindDataGenerator"
+    ],
+    "client": [
+      "io.github.salasgthub.anyfind.client.AnyfindClient"
+    ],
+    "main": [
+      "io.github.salasgthub.anyfind.Anyfind"
+    ],
+    "modmenu": [
+      "io.github.salasgthub.anyfind.client.integration.AnyfindModMenuIntegration"
+    ]
+  },
+  "mixins": [
+    "anyfind.mixins.json",
+    {
+      "config": "anyfind.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}"
+  },
+  "suggests": {
+    "modmenu": "*"
+  }
+}
