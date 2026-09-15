@@ -8,6 +8,8 @@
   "screen.anyfind.search.empty": "No hay items en contenedores (radio %s)",
   "screen.anyfind.search.no_matches": "Sin coincidencias",
   "screen.anyfind.search.summary": "%s items · %s contenedores · radio %s",
+  "screen.anyfind.search.summary_zone": "%s items · %s contenedores · zona %s",
+  "screen.anyfind.search.empty_zone": "No hay items en la zona %s",
   "screen.anyfind.search.ignored": " · %s ignorados",
   "screen.anyfind.search.tooltip.total": "Total: %s",
   "screen.anyfind.search.tooltip.containers": "En %s contenedor(es)",

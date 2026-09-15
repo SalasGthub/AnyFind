@@ -3,7 +3,7 @@ package io.github.salasgthub.anyfind.command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
-import io.github.salasgthub.anyfind.scan.ContainerScanner;
+import io.github.salasgthub.anyfind.scan.ScanRequest;
 import io.github.salasgthub.anyfind.scan.ScanResult;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
@@ -34,18 +34,21 @@ public final class AnyfindCommands {
                                 .then(Commands.argument("includeStructures", BoolArgumentType.bool())
                                         .executes(context -> scan(context.getSource(),
                                                 IntegerArgumentType.getInteger(context, "radius"),
-                                                !BoolArgumentType.getBool(context, "includeStructures")))))));
+                                                !BoolArgumentType.getBool(context, "includeStructures"))))))
+                .then(ZoneCommands.build()));
     }
 
     private static int scan(CommandSourceStack source, int radius, boolean excludeStructures) {
         BlockPos center = BlockPos.containing(source.getPosition());
+        ScanRequest request = ScanRequest.resolve(source.getLevel(), center, radius, excludeStructures);
         long start = System.nanoTime();
-        ScanResult result = ContainerScanner.scan(source.getLevel(), center, radius, excludeStructures);
+        ScanResult result = request.run(source.getLevel());
         long elapsedMs = (System.nanoTime() - start) / 1_000_000;
 
+        String area = request.zoneName().isEmpty() ? "radio " + radius : "zona " + request.zoneName();
         source.sendSuccess(() -> Component.literal("[AnyFind] ").withStyle(ChatFormatting.GOLD)
                 .append(Component.literal(result.containerCount() + " contenedores, "
-                        + result.distinctItemCount() + " items distintos (radio " + radius + ", "
+                        + result.distinctItemCount() + " items distintos (" + area + ", "
                         + elapsedMs + " ms)").withStyle(ChatFormatting.WHITE)), false);
 
         if (result.skippedLootContainers() > 0) {

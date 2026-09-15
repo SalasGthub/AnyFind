@@ -174,13 +174,18 @@ public class ItemSearchScreen extends Screen {
             case UNSUPPORTED -> Component.translatable("screen.anyfind.search.unsupported");
             case READY -> {
                 if (results.entries().isEmpty()) {
-                    yield Component.translatable("screen.anyfind.search.empty", results.radius());
+                    yield results.zoneName().isEmpty()
+                            ? Component.translatable("screen.anyfind.search.empty", results.radius())
+                            : Component.translatable("screen.anyfind.search.empty_zone", results.zoneName());
                 }
                 if (visibleSlots.isEmpty()) {
                     yield Component.translatable("screen.anyfind.search.no_matches");
                 }
-                MutableComponent summary = Component.translatable("screen.anyfind.search.summary",
-                        visibleSlots.size(), results.containerCount(), results.radius());
+                MutableComponent summary = results.zoneName().isEmpty()
+                        ? Component.translatable("screen.anyfind.search.summary",
+                                visibleSlots.size(), results.containerCount(), results.radius())
+                        : Component.translatable("screen.anyfind.search.summary_zone",
+                                visibleSlots.size(), results.containerCount(), results.zoneName());
                 int ignored = results.skippedStructureContainers() + results.skippedLootContainers();
                 yield ignored == 0
                         ? summary

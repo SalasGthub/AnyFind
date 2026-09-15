@@ -15,6 +15,7 @@ el mod te guía hasta el o los cofres que lo tienen.
 | Fase 1: escaneo base     | 🧪 Implementada, falta probar en el juego |
 | Fase 2: buscador (Ctrl+F) | 🧪 Implementada, falta probar en el juego |
 | Fase 3: guía hasta el cofre | 🧪 Implementada, falta probar en el juego |
+| Fase 4: zonas            | 🧪 Implementada, falta probar en el juego |
 | Mod Menu + configuración | 🧪 Implementado, falta probar en el juego |
 | Todo lo demás            | ⏳ Pendiente   |
 
@@ -172,9 +173,36 @@ paredes.
 - Un cofre doble se resalta en una sola de sus mitades.
 
 ### Fase 4: Zonas
-- [ ] Comandos para crear, listar y borrar zonas
-- [ ] Guardado persistente por mundo
-- [ ] El escaneo usa la zona en la que está el jugador
+- [x] Comandos para crear, listar y borrar zonas
+- [x] Guardado persistente por dimensión
+- [x] El escaneo usa la zona en la que está el jugador
+- [ ] Probar en el juego
+- [ ] Mostrar los límites de la zona en el mundo (opcional)
+
+**Comandos:**
+
+| Comando | Qué hace |
+|---------|----------|
+| `/anyfind zone create <nombre>` | Zona cúbica de radio 24 alrededor tuyo |
+| `/anyfind zone create <nombre> <radio>` | Igual, con el radio que le pongas |
+| `/anyfind zone create <nombre> <pos1> <pos2>` | Zona entre dos esquinas (acepta `~ ~ ~`) |
+| `/anyfind zone list` | Lista las zonas de la dimensión |
+| `/anyfind zone here` | Dice en qué zona estás parado |
+| `/anyfind zone remove <nombre>` | Borra una zona |
+
+**Cómo se usan:**
+- Si estás **parado dentro de una zona**, tanto el buscador (Ctrl + F) como `/anyfind scan` escanean
+  toda esa zona en vez del radio. Si hay zonas superpuestas, gana la más chica.
+- Dentro de una zona **no** se aplica el filtro de estructuras: vos dijiste qué mirar. Así funciona
+  si construiste tu base adentro de una aldea.
+- Si no estás en ninguna zona, sigue valiendo el radio de la configuración.
+- La pantalla muestra si usó una zona ("zona bodega") o el radio.
+- Límite: 256 bloques por lado.
+- Las zonas se guardan **por dimensión** y son compartidas: en un servidor, cualquier jugador puede
+  crear, ver y borrar zonas. Si hace falta, se puede limitar por permisos más adelante.
+
+**Implementación:** `zone/Zone` (nombre + caja), `zone/ZoneStorage` (`SavedData` guardado con el
+mundo) y `scan/ScanRequest`, que decide si se escanea la zona o el cubo del radio.
 
 ### Compatibilidad con otros mods
 - [x] **Mod Menu**: ícono, descripción y botón de opciones propio
@@ -207,6 +235,8 @@ Sobre **Essential Mod** (essential.gg): no comparten nada conflictivo con AnyFin
 - **2026-09-15:** Fase 1: escáner de contenedores (cofres, cofres trampa, barriles, shulker boxes)
   y comando `/anyfind scan [radio]`.
 - **2026-09-15:** Fase 2: buscador integrado con atajo Ctrl + F, paquetes de red y traducciones.
+- **2026-09-15:** Fase 4: zonas con `/anyfind zone create|list|here|remove`, guardadas por dimensión,
+  y el escaneo las usa cuando estás parado adentro.
 - **2026-09-15:** El escaneo ignora los cofres dentro de estructuras generadas (opción
   "Ignorar estructuras"), para separar los cofres del jugador de los de mazmorras y aldeas.
 - **2026-09-15:** Fase 3: resaltado de cofres con gizmos, camino de partículas, marca sobre el cofre

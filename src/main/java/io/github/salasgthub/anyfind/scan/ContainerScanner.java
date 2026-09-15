@@ -12,6 +12,7 @@ import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
 import net.minecraft.world.level.block.entity.ShulkerBoxBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.ChestType;
+import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.chunk.LevelChunk;
 
 /**
@@ -25,20 +26,30 @@ public final class ContainerScanner {
     private ContainerScanner() {
     }
 
+    /** Scans the cube of side {@code 2 * radius + 1} centered on {@code center}. */
+    public static ScanResult scan(ServerLevel level, BlockPos center, int radius, boolean excludeStructures) {
+        return scan(level, cubeAround(center, radius), excludeStructures);
+    }
+
+    public static BoundingBox cubeAround(BlockPos center, int radius) {
+        return BoundingBox.fromCorners(
+                center.offset(-radius, -radius, -radius),
+                center.offset(radius, radius, radius));
+    }
+
     /**
-     * Scans every supported container inside the cube of side {@code 2 * radius + 1} centered on {@code center}.
-     * Must be called on the server thread.
+     * Scans every supported container inside {@code area}. Must be called on the server thread.
      *
      * @param excludeStructures skip containers standing inside a generated structure (dungeons, villages,
      *                          mineshafts…), so only the player's own containers are indexed
      */
-    public static ScanResult scan(ServerLevel level, BlockPos center, int radius, boolean excludeStructures) {
+    public static ScanResult scan(ServerLevel level, BoundingBox area, boolean excludeStructures) {
         ScanResult result = new ScanResult();
 
-        int minChunkX = (center.getX() - radius) >> 4;
-        int maxChunkX = (center.getX() + radius) >> 4;
-        int minChunkZ = (center.getZ() - radius) >> 4;
-        int maxChunkZ = (center.getZ() + radius) >> 4;
+        int minChunkX = area.minX() >> 4;
+        int maxChunkX = area.maxX() >> 4;
+        int minChunkZ = area.minZ() >> 4;
+        int maxChunkZ = area.maxZ() >> 4;
 
         for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
             for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
@@ -47,7 +58,7 @@ public final class ContainerScanner {
                     continue;
                 }
                 for (BlockEntity blockEntity : chunk.getBlockEntities().values()) {
-                    if (!isSupported(blockEntity) || !isInRange(blockEntity.getBlockPos(), center, radius)) {
+                    if (!isSupported(blockEntity) || !area.isInside(blockEntity.getBlockPos())) {
                         continue;
                     }
                     if (excludeStructures && isInsideStructure(level, blockEntity.getBlockPos())) {
@@ -75,12 +86,6 @@ public final class ContainerScanner {
      */
     private static boolean isInsideStructure(ServerLevel level, BlockPos pos) {
         return level.structureManager().getStructureWithPieceAt(pos, structure -> true).isValid();
-    }
-
-    private static boolean isInRange(BlockPos pos, BlockPos center, int radius) {
-        return Math.abs(pos.getX() - center.getX()) <= radius
-                && Math.abs(pos.getY() - center.getY()) <= radius
-                && Math.abs(pos.getZ() - center.getZ()) <= radius;
     }
 
     private static void scanContainer(BlockEntity blockEntity, ScanResult result) {

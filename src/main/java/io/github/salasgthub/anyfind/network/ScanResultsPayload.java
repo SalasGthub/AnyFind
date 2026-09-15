@@ -16,7 +16,10 @@ import java.util.List;
 /**
  * Server → client: the result of a scan, already sorted by total count (highest first).
  */
-public record ScanResultsPayload(int radius, int containerCount, int skippedLootContainers,
+/**
+ * @param zoneName zone the scan used, or an empty string when it used the radius around the player
+ */
+public record ScanResultsPayload(int radius, String zoneName, int containerCount, int skippedLootContainers,
                                  int skippedStructureContainers, List<Entry> entries)
         implements CustomPacketPayload {
 
@@ -40,19 +43,20 @@ public record ScanResultsPayload(int radius, int containerCount, int skippedLoot
 
     public static final StreamCodec<RegistryFriendlyByteBuf, ScanResultsPayload> CODEC = StreamCodec.composite(
             ByteBufCodecs.VAR_INT, ScanResultsPayload::radius,
+            ByteBufCodecs.stringUtf8(64), ScanResultsPayload::zoneName,
             ByteBufCodecs.VAR_INT, ScanResultsPayload::containerCount,
             ByteBufCodecs.VAR_INT, ScanResultsPayload::skippedLootContainers,
             ByteBufCodecs.VAR_INT, ScanResultsPayload::skippedStructureContainers,
             Entry.CODEC.apply(ByteBufCodecs.list()), ScanResultsPayload::entries,
             ScanResultsPayload::new);
 
-    public static ScanResultsPayload from(ScanResult result, int radius) {
+    public static ScanResultsPayload from(ScanResult result, int radius, String zoneName) {
         List<Entry> entries = result.sortedByTotal().stream()
                 .map(entry -> new Entry(entry.item(), entry.total(), entry.locations().entrySet().stream()
                         .map(location -> new Location(location.getKey(), location.getValue()))
                         .toList()))
                 .toList();
-        return new ScanResultsPayload(radius, result.containerCount(), result.skippedLootContainers(),
+        return new ScanResultsPayload(radius, zoneName, result.containerCount(), result.skippedLootContainers(),
                 result.skippedStructureContainers(), entries);
     }
 

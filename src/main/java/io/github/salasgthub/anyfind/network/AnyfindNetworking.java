@@ -1,7 +1,7 @@
 package io.github.salasgthub.anyfind.network;
 
 import io.github.salasgthub.anyfind.command.AnyfindCommands;
-import io.github.salasgthub.anyfind.scan.ContainerScanner;
+import io.github.salasgthub.anyfind.scan.ScanRequest;
 import io.github.salasgthub.anyfind.scan.ScanResult;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -21,9 +21,10 @@ public final class AnyfindNetworking {
             ServerPlayer player = context.player();
             // The radius comes from the client config, so clamp it to a sane range here.
             int radius = Math.clamp(payload.radius(), 1, AnyfindCommands.MAX_RADIUS);
-            ScanResult result = ContainerScanner.scan(player.level(), player.blockPosition(), radius,
+            ScanRequest request = ScanRequest.resolve(player.level(), player.blockPosition(), radius,
                     payload.excludeStructures());
-            ServerPlayNetworking.send(player, ScanResultsPayload.from(result, radius));
+            ScanResult result = request.run(player.level());
+            ServerPlayNetworking.send(player, ScanResultsPayload.from(result, radius, request.zoneName()));
         });
     }
 }

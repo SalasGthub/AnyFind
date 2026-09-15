@@ -8,6 +8,8 @@
   "screen.anyfind.search.empty": "No items in containers (radius %s)",
   "screen.anyfind.search.no_matches": "No matches",
   "screen.anyfind.search.summary": "%s items · %s containers · radius %s",
+  "screen.anyfind.search.summary_zone": "%s items · %s containers · zone %s",
+  "screen.anyfind.search.empty_zone": "No items in zone %s",
   "screen.anyfind.search.ignored": " · %s ignored",
   "screen.anyfind.search.tooltip.total": "Total: %s",
   "screen.anyfind.search.tooltip.containers": "In %s container(s)",
