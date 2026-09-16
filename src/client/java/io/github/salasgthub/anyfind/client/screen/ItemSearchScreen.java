@@ -116,7 +116,8 @@ public class ItemSearchScreen extends Screen {
         state = State.LOADING;
         updateRescanButton();
         AnyfindConfig config = AnyfindConfig.get();
-        ClientPlayNetworking.send(new RequestScanPayload(config.scanRadius, config.excludeStructures));
+        ClientPlayNetworking.send(new RequestScanPayload(config.scanRadius, config.excludeStructures,
+                config.includeOtherContainers, config.includeNestedContainers));
     }
 
     private void updateRescanButton() {

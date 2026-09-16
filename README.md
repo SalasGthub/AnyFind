@@ -104,8 +104,8 @@ Combinar lo mejor de cada opción:
 
 ### Detalles del escaneo
 
-- **Contenedores soportados:** cofres, cofres trampa, barriles y shulker boxes colocadas. Más
-  adelante: hoppers, dispensers, etc. (configurable).
+- **Contenedores soportados:** cofres, cofres trampa, barriles y shulker boxes colocadas; con la
+  opción "Otros contenedores", también hoppers, dispensers, hornos y demás.
 - **Cofres tuyos vs. cofres generados:** se ignoran dos casos.
   1. Los que todavía tienen loot sin generar (nunca fueron abiertos): leerlos generaría el loot.
   2. Los que están dentro de una **estructura generada** (mazmorras, aldeas, minas, fortalezas...),
@@ -114,8 +114,8 @@ Combinar lo mejor de cada opción:
   Es configurable ("Ignorar estructuras", activado por defecto). Contrapartida: un cofre que hayas
   puesto vos dentro de una aldea también se ignora. Las zonas (Fase 4) van a ser la solución fina.
 - **Cofres dobles:** contar cada cofre doble una sola vez (unificar las dos mitades).
-- **Shulker boxes dentro de cofres:** leer también su contenido (fase posterior), indicando
-  "cofre X → shulker".
+- **Shulker boxes dentro de cofres:** se lee su contenido y cuenta en la posición del cofre que las
+  guarda (opción "Mirar dentro de shulkers").
 - **Resultado del escaneo:** índice `item → lista de (posición, cantidad)` más el total por item.
 - **Límites:** máximo 2000 contenedores por escaneo (corta y avisa), y como mucho 24 posiciones por
   item viajan al cliente, las más cercanas, para no pasarse del tamaño máximo de un paquete (1 MiB).
@@ -258,10 +258,23 @@ Sobre **Essential Mod** (essential.gg): no comparten nada conflictivo con AnyFin
   si no, la pantalla avisa en vez de quedarse cargando.
 
 ### Fase 5: Extras
-- [ ] Contenido de shulker boxes dentro de cofres
-- [ ] Sugerencia automática al detectar un grupo de cofres
-- [ ] Más opciones de configuración (contenedores soportados)
-- [ ] Modo solo cliente (caché al abrir cofres) para servidores sin el mod
+- [x] Contenido de shulker boxes dentro de cofres (opción "Mirar dentro de shulkers", activada)
+- [x] Sugerencia automática al detectar un grupo de cofres
+- [x] Contenedores soportados configurables (opción "Otros contenedores", desactivada)
+- [ ] Probar en el juego
+- [ ] ~~Modo solo cliente (caché al abrir cofres) para servidores sin el mod~~ — **descartado**: el
+      alcance son partidas propias y mundos con Essential, donde quien hostea tiene el mod
+
+**Detalles:**
+- **Shulkers anidadas:** se lee el componente `CONTAINER` del item, hasta dos niveles (una shulker
+  dentro de otra es lo más profundo que llega vanilla). Los items cuentan en la posición del cofre
+  que las contiene, así que la guía te lleva igual hasta ahí.
+- **Otros contenedores:** con la opción activada entra cualquier bloque con inventario (hoppers,
+  droppers, dispensers, hornos, mesas de alquimia, crafters...). Desactivada, solo cofres, cofres
+  trampa, barriles y shulker boxes colocadas.
+- **Sugerencia de zona:** si escaneás fuera de toda zona y aparecen 8 o más contenedores, el chat
+  sugiere crear una, con el comando listo para clickear. Se repite como mucho cada 10 minutos por
+  jugador, y nunca crea nada solo.
 
 ---
 
@@ -272,6 +285,8 @@ Sobre **Essential Mod** (essential.gg): no comparten nada conflictivo con AnyFin
 - **2026-09-15:** Fase 1: escáner de contenedores (cofres, cofres trampa, barriles, shulker boxes)
   y comando `/anyfind scan [radio]`.
 - **2026-09-15:** Fase 2: buscador integrado con atajo Ctrl + F, paquetes de red y traducciones.
+- **2026-09-15:** Fase 5: contenido de shulkers dentro de cofres, opción de otros contenedores,
+  sugerencia de zona al detectar un grupo de cofres y pantalla de opciones en dos columnas.
 - **2026-09-15:** Límites de seguridad: tope de 2000 contenedores por escaneo, 24 posiciones por item
   en el paquete, se saltea el chequeo de estructuras en chunks sin estructuras y el camino de
   partículas se dibuja cada 2 ticks.

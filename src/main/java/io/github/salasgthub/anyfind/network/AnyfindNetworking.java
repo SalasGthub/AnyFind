@@ -2,6 +2,7 @@ package io.github.salasgthub.anyfind.network;
 
 import io.github.salasgthub.anyfind.command.AnyfindCommands;
 import io.github.salasgthub.anyfind.scan.ScanRequest;
+import io.github.salasgthub.anyfind.zone.ZoneSuggester;
 import io.github.salasgthub.anyfind.scan.ScanResult;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -22,10 +23,11 @@ public final class AnyfindNetworking {
             // The radius comes from the client config, so clamp it to a sane range here.
             int radius = Math.clamp(payload.radius(), 1, AnyfindCommands.MAX_RADIUS);
             ScanRequest request = ScanRequest.resolve(player.level(), player.blockPosition(), radius,
-                    payload.excludeStructures());
+                    payload.excludeStructures(), payload.options());
             ScanResult result = request.run(player.level());
             ServerPlayNetworking.send(player,
                     ScanResultsPayload.from(result, radius, request.zoneName(), player.blockPosition()));
+            ZoneSuggester.maybeSuggest(player, request, result);
         });
     }
 }

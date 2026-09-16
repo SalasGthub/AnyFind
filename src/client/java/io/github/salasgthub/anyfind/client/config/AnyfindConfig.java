@@ -34,6 +34,10 @@ public class AnyfindConfig {
     public KeyModifier modifier = KeyModifier.CTRL;
     /** Ignore containers inside generated structures, so dungeon and village chests stay out of the results. */
     public boolean excludeStructures = true;
+    /** Also read hoppers, droppers, dispensers, furnaces and the like. */
+    public boolean includeOtherContainers = false;
+    /** Also read what is inside shulker boxes stored in a container. */
+    public boolean includeNestedContainers = true;
     /** Whether the search key also works while an inventory or container screen is open. */
     public boolean openFromContainers = true;
     /** Draw a box around each container holding the selected item. */

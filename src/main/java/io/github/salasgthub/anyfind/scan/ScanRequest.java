@@ -13,18 +13,19 @@ import net.minecraft.world.level.levelgen.structure.BoundingBox;
  * @param zoneName          zone used, or an empty string when falling back to the radius
  * @param excludeStructures whether containers inside generated structures are skipped
  */
-public record ScanRequest(BoundingBox area, String zoneName, boolean excludeStructures) {
+public record ScanRequest(BoundingBox area, String zoneName, boolean excludeStructures, ScanOptions options) {
 
-    public static ScanRequest resolve(ServerLevel level, BlockPos origin, int radius, boolean excludeStructures) {
+    public static ScanRequest resolve(ServerLevel level, BlockPos origin, int radius, boolean excludeStructures,
+                                      ScanOptions options) {
         Zone zone = ZoneStorage.of(level).zoneAt(origin);
         if (zone != null) {
             // Inside a zone the player said what to look at, so generated structures are not filtered out.
-            return new ScanRequest(zone.area(), zone.name(), false);
+            return new ScanRequest(zone.area(), zone.name(), false, options);
         }
-        return new ScanRequest(ContainerScanner.cubeAround(origin, radius), "", excludeStructures);
+        return new ScanRequest(ContainerScanner.cubeAround(origin, radius), "", excludeStructures, options);
     }
 
     public ScanResult run(ServerLevel level) {
-        return ContainerScanner.scan(level, area, excludeStructures);
+        return ContainerScanner.scan(level, area, excludeStructures, options);
     }
 }

@@ -4,6 +4,7 @@ import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import io.github.salasgthub.anyfind.scan.ContainerScanner;
+import io.github.salasgthub.anyfind.scan.ScanOptions;
 import io.github.salasgthub.anyfind.scan.ScanRequest;
 import io.github.salasgthub.anyfind.scan.ScanResult;
 import net.minecraft.ChatFormatting;
@@ -41,7 +42,8 @@ public final class AnyfindCommands {
 
     private static int scan(CommandSourceStack source, int radius, boolean excludeStructures) {
         BlockPos center = BlockPos.containing(source.getPosition());
-        ScanRequest request = ScanRequest.resolve(source.getLevel(), center, radius, excludeStructures);
+        ScanRequest request = ScanRequest.resolve(source.getLevel(), center, radius, excludeStructures,
+                ScanOptions.DEFAULT);
         long start = System.nanoTime();
         ScanResult result = request.run(source.getLevel());
         long elapsedMs = (System.nanoTime() - start) / 1_000_000;

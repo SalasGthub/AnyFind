@@ -3,7 +3,9 @@ package io.github.salasgthub.anyfind.scan;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.Container;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemContainerContents;
 import net.minecraft.world.level.block.ChestBlock;
 import net.minecraft.world.level.block.entity.BarrelBlockEntity;
 import net.minecraft.world.level.block.entity.BlockEntity;
@@ -25,6 +27,8 @@ public final class ContainerScanner {
 
     /** Upper bound per scan, so a huge zone cannot stall the server thread. */
     public static final int MAX_CONTAINERS = 2000;
+    /** A shulker box inside a shulker box is as deep as vanilla goes. */
+    private static final int MAX_NESTING = 2;
 
     private ContainerScanner() {
     }
@@ -47,6 +51,11 @@ public final class ContainerScanner {
      *                          mineshafts…), so only the player's own containers are indexed
      */
     public static ScanResult scan(ServerLevel level, BoundingBox area, boolean excludeStructures) {
+        return scan(level, area, excludeStructures, ScanOptions.DEFAULT);
+    }
+
+    public static ScanResult scan(ServerLevel level, BoundingBox area, boolean excludeStructures,
+                                  ScanOptions options) {
         ScanResult result = new ScanResult();
 
         int minChunkX = area.minX() >> 4;
@@ -64,7 +73,7 @@ public final class ContainerScanner {
                 boolean chunkMayHaveStructures = excludeStructures && hasStructureData(chunk);
 
                 for (BlockEntity blockEntity : chunk.getBlockEntities().values()) {
-                    if (!isSupported(blockEntity) || !area.isInside(blockEntity.getBlockPos())) {
+                    if (!isSupported(blockEntity, options) || !area.isInside(blockEntity.getBlockPos())) {
                         continue;
                     }
                     if (result.containerCount() >= MAX_CONTAINERS) {
@@ -75,7 +84,7 @@ public final class ContainerScanner {
                         result.markSkippedStructure();
                         continue;
                     }
-                    scanContainer(blockEntity, result);
+                    scanContainer(blockEntity, result, options);
                 }
             }
         }
@@ -87,11 +96,12 @@ public final class ContainerScanner {
         return !chunk.getAllStarts().isEmpty() || !chunk.getAllReferences().isEmpty();
     }
 
-    private static boolean isSupported(BlockEntity blockEntity) {
+    private static boolean isSupported(BlockEntity blockEntity, ScanOptions options) {
         // ChestBlockEntity also covers trapped chests.
-        return blockEntity instanceof ChestBlockEntity
+        boolean isStorage = blockEntity instanceof ChestBlockEntity
                 || blockEntity instanceof BarrelBlockEntity
                 || blockEntity instanceof ShulkerBoxBlockEntity;
+        return isStorage || (options.includeOtherContainers() && blockEntity instanceof Container);
     }
 
     /**
@@ -103,7 +113,7 @@ public final class ContainerScanner {
         return level.structureManager().getStructureWithPieceAt(pos, structure -> true).isValid();
     }
 
-    private static void scanContainer(BlockEntity blockEntity, ScanResult result) {
+    private static void scanContainer(BlockEntity blockEntity, ScanResult result, ScanOptions options) {
         // Reading a container with a pending loot table would generate its loot, so leave those untouched.
         if (blockEntity instanceof RandomizableContainerBlockEntity randomizable && randomizable.getLootTable() != null) {
             result.markSkippedLoot();
@@ -117,8 +127,23 @@ public final class ContainerScanner {
         for (int slot = 0; slot < container.getContainerSize(); slot++) {
             ItemStack stack = container.getItem(slot);
             if (!stack.isEmpty()) {
-                result.addItem(stack.getItem(), pos, stack.getCount());
+                addStack(stack, pos, result, options, 0);
             }
+        }
+    }
+
+    /**
+     * Adds a stack and, when it is a container item such as a shulker box, what it holds inside. Nesting is
+     * limited because a shulker box can only ever hold one more level of them.
+     */
+    private static void addStack(ItemStack stack, BlockPos pos, ScanResult result, ScanOptions options, int depth) {
+        result.addItem(stack.getItem(), pos, stack.getCount());
+        if (!options.includeNestedContainers() || depth >= MAX_NESTING) {
+            return;
+        }
+        ItemContainerContents contents = stack.get(DataComponents.CONTAINER);
+        if (contents != null) {
+            contents.nonEmptyItemCopyStream().forEach(nested -> addStack(nested, pos, result, options, depth + 1));
         }
     }
 
