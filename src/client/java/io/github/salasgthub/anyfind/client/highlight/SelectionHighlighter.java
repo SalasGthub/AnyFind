@@ -11,6 +11,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.gizmos.GizmoStyle;
 import net.minecraft.gizmos.Gizmos;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Comparator;
@@ -25,14 +26,17 @@ public final class SelectionHighlighter {
     /** Containers drawn at once; the rest would just be noise. */
     private static final int MAX_BOXES = 12;
     private static final double MAX_DISTANCE = 160.0;
-    /** How close the player has to get for the highlight to turn itself off. */
-    private static final double ARRIVAL_DISTANCE = 2.5;
     private static final int MARKER_INTERVAL_TICKS = 4;
     /** Distance between dots on the trail, in blocks. */
     private static final double TRAIL_SPACING = 1.25;
     /** Ticks it takes a dot to travel one gap, i.e. how fast the trail flows. */
     private static final int FLOW_PERIOD_TICKS = 10;
-    private static final int MAX_TRAIL_PARTICLES = 80;
+    private static final int MAX_TRAIL_PARTICLES = 48;
+    /** Particles live about a second, so drawing the trail every tick would only burn CPU. */
+    private static final int TRAIL_INTERVAL_TICKS = 2;
+    /** How far the ground search looks above and below the straight line, in blocks. */
+    private static final int GROUND_SEARCH_UP = 3;
+    private static final int GROUND_SEARCH_DOWN = 6;
 
     private static final int BOX_STROKE_COLOR = 0xFFFFC74A;
     private static final int BOX_FILL_COLOR = 0x33FFC74A;
@@ -64,15 +68,12 @@ public final class SelectionHighlighter {
             return;
         }
 
+        // The highlight is cleared by OpenedContainerWatcher once the container is actually opened, so being
+        // next to it is not enough to turn it off.
         BlockPos closest = targets.getFirst().pos();
-        if (closest.distSqr(playerBlock) <= ARRIVAL_DISTANCE * ARRIVAL_DISTANCE) {
-            announceArrival(client);
-            SearchSelection.clear();
-            return;
-        }
-
         AnyfindConfig config = AnyfindConfig.get();
-        Vec3 from = client.player.getEyePosition().add(0.0, -0.5, 0.0);
+        // The trail runs along the ground, so it starts at the player's feet.
+        Vec3 from = client.player.position();
         Vec3 to = Vec3.atCenterOf(closest);
 
         if (config.showBox) {
@@ -88,7 +89,7 @@ public final class SelectionHighlighter {
             }
         }
 
-        if (config.showPath) {
+        if (config.showPath && tickCounter % TRAIL_INTERVAL_TICKS == 0) {
             spawnTrail(client, from, to);
         }
         if (config.showMarker && tickCounter % MARKER_INTERVAL_TICKS == 0) {
@@ -109,28 +110,55 @@ public final class SelectionHighlighter {
     }
 
     /**
-     * Dots running along the straight line to the chest. The starting offset advances every tick, so the
-     * dots read as flowing towards the container instead of sitting still.
+     * Dots laid on the ground between the player and the chest. Each dot is dropped on the surface under the
+     * straight horizontal line, and the starting offset advances every tick so the trail reads as flowing.
+     * It does not walk around walls: it is a direction to follow, not a route.
      */
     private static void spawnTrail(Minecraft client, Vec3 from, Vec3 to) {
         Vec3 delta = to.subtract(from);
-        double distance = delta.length();
-        if (distance < 0.5) {
+        double horizontalDistance = Math.sqrt(delta.x() * delta.x() + delta.z() * delta.z());
+        if (horizontalDistance < 1.0) {
             return;
         }
-        Vec3 direction = delta.scale(1.0 / distance);
+        double stepX = delta.x() / horizontalDistance;
+        double stepZ = delta.z() / horizontalDistance;
         double phase = (tickCounter % FLOW_PERIOD_TICKS) / (double) FLOW_PERIOD_TICKS * TRAIL_SPACING;
+
         int spawned = 0;
-        for (double travelled = phase; travelled < distance && spawned < MAX_TRAIL_PARTICLES;
+        for (double travelled = phase; travelled < horizontalDistance && spawned < MAX_TRAIL_PARTICLES;
                 travelled += TRAIL_SPACING, spawned++) {
-            Vec3 point = from.add(direction.scale(travelled));
-            client.level.addParticle(ParticleTypes.END_ROD, point.x(), point.y(), point.z(), 0.0, 0.0, 0.0);
+            double x = from.x() + stepX * travelled;
+            double z = from.z() + stepZ * travelled;
+            // Height the dot would have in a straight line, used as the starting point of the ground search.
+            double expectedY = from.y() + (to.y() - from.y()) * (travelled / horizontalDistance);
+            double groundY = groundHeightNear(client, x, expectedY, z);
+            client.level.addParticle(ParticleTypes.END_ROD, x, groundY + 0.15, z, 0.0, 0.0, 0.0);
         }
     }
 
-    private static void announceArrival(Minecraft client) {
-        client.player.sendSystemMessage(Component.literal("[AnyFind] ").withStyle(ChatFormatting.GOLD)
-                .append(Component.translatable("message.anyfind.arrived", SearchSelection.stack().getHoverName())
-                        .withStyle(ChatFormatting.WHITE)));
+    /**
+     * Top of the first surface found around {@code startY}: looks a bit upwards first (stairs going up) and
+     * then downwards (drops). Falls back to the straight-line height when there is nothing solid nearby.
+     */
+    private static double groundHeightNear(Minecraft client, double x, double startY, double z) {
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        int blockX = Mth.floor(x);
+        int blockZ = Mth.floor(z);
+        int origin = Mth.floor(startY);
+
+        for (int offset = GROUND_SEARCH_UP; offset >= -GROUND_SEARCH_DOWN; offset--) {
+            int y = origin + offset;
+            if (client.level.isOutsideBuildHeight(y) || client.level.isOutsideBuildHeight(y - 1)) {
+                continue;
+            }
+            cursor.set(blockX, y - 1, blockZ);
+            boolean standsOnSolid = client.level.getBlockState(cursor).isSolid();
+            cursor.set(blockX, y, blockZ);
+            boolean isFree = !client.level.getBlockState(cursor).isSolid();
+            if (standsOnSolid && isFree) {
+                return y;
+            }
+        }
+        return startY;
     }
 }

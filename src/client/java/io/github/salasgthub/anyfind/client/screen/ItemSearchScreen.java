@@ -8,7 +8,9 @@ import io.github.salasgthub.anyfind.network.ScanResultsPayload;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
+import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -29,6 +31,8 @@ public class ItemSearchScreen extends Screen {
     private static final int SLOT_SIZE = 18;
     private static final int PADDING = 8;
     private static final int SEARCH_HEIGHT = 18;
+    private static final int RESCAN_WIDTH = 60;
+    private static final int SPACING = 4;
     private static final int STATUS_HEIGHT = 14;
 
     private static final int PANEL_COLOR = 0xC0101010;
@@ -46,6 +50,7 @@ public class ItemSearchScreen extends Screen {
     private List<ResultSlot> visibleSlots = List.of();
 
     private EditBox searchBox;
+    private Button rescanButton;
     private int columns;
     private int rows;
     private int gridLeft;
@@ -78,7 +83,8 @@ public class ItemSearchScreen extends Screen {
         gridTop = panelTop + PADDING + SEARCH_HEIGHT + PADDING;
 
         String previousQuery = searchBox != null ? searchBox.getValue() : "";
-        searchBox = new EditBox(font, gridLeft, panelTop + PADDING, columns * SLOT_SIZE, SEARCH_HEIGHT,
+        int searchWidth = columns * SLOT_SIZE - RESCAN_WIDTH - SPACING;
+        searchBox = new EditBox(font, gridLeft, panelTop + PADDING, searchWidth, SEARCH_HEIGHT,
                 Component.translatable("screen.anyfind.search.hint"));
         searchBox.setHint(Component.translatable("screen.anyfind.search.hint").withStyle(ChatFormatting.DARK_GRAY));
         searchBox.setMaxLength(64);
@@ -87,21 +93,42 @@ public class ItemSearchScreen extends Screen {
         addRenderableWidget(searchBox);
         setInitialFocus(searchBox);
 
+        rescanButton = addRenderableWidget(Button.builder(
+                        Component.translatable("screen.anyfind.search.rescan"), button -> requestScan())
+                .tooltip(Tooltip.create(Component.translatable("screen.anyfind.search.rescan.tooltip")))
+                .bounds(gridLeft + searchWidth + SPACING, panelTop + PADDING, RESCAN_WIDTH, SEARCH_HEIGHT)
+                .build());
+        rescanButton.active = state != State.LOADING;
+
         // init() also runs on window resize; only ask the server once.
         if (results == null && state == State.LOADING) {
-            if (ClientPlayNetworking.canSend(RequestScanPayload.TYPE)) {
-                AnyfindConfig config = AnyfindConfig.get();
-                ClientPlayNetworking.send(new RequestScanPayload(config.scanRadius, config.excludeStructures));
-            } else {
-                state = State.UNSUPPORTED;
-            }
+            requestScan();
         }
         applyFilter();
+    }
+
+    private void requestScan() {
+        if (!ClientPlayNetworking.canSend(RequestScanPayload.TYPE)) {
+            state = State.UNSUPPORTED;
+            updateRescanButton();
+            return;
+        }
+        state = State.LOADING;
+        updateRescanButton();
+        AnyfindConfig config = AnyfindConfig.get();
+        ClientPlayNetworking.send(new RequestScanPayload(config.scanRadius, config.excludeStructures));
+    }
+
+    private void updateRescanButton() {
+        if (rescanButton != null) {
+            rescanButton.active = state != State.LOADING;
+        }
     }
 
     public void setResults(ScanResultsPayload payload) {
         results = payload;
         state = State.READY;
+        updateRescanButton();
         allSlots.clear();
         for (ScanResultsPayload.Entry entry : payload.entries()) {
             ItemStack stack = new ItemStack(entry.item());

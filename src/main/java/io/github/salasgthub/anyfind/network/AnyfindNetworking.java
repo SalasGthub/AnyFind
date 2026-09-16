@@ -24,7 +24,8 @@ public final class AnyfindNetworking {
             ScanRequest request = ScanRequest.resolve(player.level(), player.blockPosition(), radius,
                     payload.excludeStructures());
             ScanResult result = request.run(player.level());
-            ServerPlayNetworking.send(player, ScanResultsPayload.from(result, radius, request.zoneName()));
+            ServerPlayNetworking.send(player,
+                    ScanResultsPayload.from(result, radius, request.zoneName(), player.blockPosition()));
         });
     }
 }

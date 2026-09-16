@@ -11,6 +11,7 @@ import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.Item;
 
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -50,14 +51,26 @@ public record ScanResultsPayload(int radius, String zoneName, int containerCount
             Entry.CODEC.apply(ByteBufCodecs.list()), ScanResultsPayload::entries,
             ScanResultsPayload::new);
 
-    public static ScanResultsPayload from(ScanResult result, int radius, String zoneName) {
+    /**
+     * Only the closest containers of each item travel: a custom payload cannot grow past 1 MiB, and the player
+     * is guided to the closest one anyway. {@code total} still counts every container found.
+     */
+    public static final int MAX_LOCATIONS_PER_ITEM = 24;
+
+    public static ScanResultsPayload from(ScanResult result, int radius, String zoneName, BlockPos origin) {
         List<Entry> entries = result.sortedByTotal().stream()
-                .map(entry -> new Entry(entry.item(), entry.total(), entry.locations().entrySet().stream()
-                        .map(location -> new Location(location.getKey(), location.getValue()))
-                        .toList()))
+                .map(entry -> new Entry(entry.item(), entry.total(), closestLocations(entry, origin)))
                 .toList();
         return new ScanResultsPayload(radius, zoneName, result.containerCount(), result.skippedLootContainers(),
                 result.skippedStructureContainers(), entries);
+    }
+
+    private static List<Location> closestLocations(ScanResult.ItemEntry entry, BlockPos origin) {
+        return entry.locations().entrySet().stream()
+                .sorted(Comparator.comparingDouble(location -> location.getKey().distSqr(origin)))
+                .limit(MAX_LOCATIONS_PER_ITEM)
+                .map(location -> new Location(location.getKey(), location.getValue()))
+                .toList();
     }
 
     @Override

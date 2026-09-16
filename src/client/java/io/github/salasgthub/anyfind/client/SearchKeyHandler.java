@@ -40,7 +40,7 @@ public final class SearchKeyHandler {
             ScreenKeyboardEvents.allowKeyPress(screen).register((currentScreen, event) -> {
                 AnyfindConfig config = AnyfindConfig.get();
                 if (!config.openFromContainers || !OPEN_SEARCH.matches(event)
-                        || (config.requireCtrl && !event.hasControlDown())) {
+                        || !config.modifier.isHeld(event)) {
                     return true;
                 }
                 if (client.player != null) {
@@ -60,21 +60,16 @@ public final class SearchKeyHandler {
         if (!pressed || client.player == null || client.gui.screen() != null) {
             return;
         }
-        if (AnyfindConfig.get().requireCtrl && !isControlDown()) {
+        if (!AnyfindConfig.get().modifier.isHeld()) {
             return;
         }
         KeyMapping swapOffhand = client.options.keySwapOffhand;
         if (KeyMappingHelper.getBoundKeyOf(swapOffhand).equals(KeyMappingHelper.getBoundKeyOf(OPEN_SEARCH))) {
             while (swapOffhand.consumeClick()) {
-                // Discard: Ctrl + F should only open the search, not swap hands.
+                // Discard: the shortcut should only open the search, not swap hands.
             }
         }
         open(client);
-    }
-
-    private static boolean isControlDown() {
-        return InputConstants.isKeyDown(InputConstants.KEY_LCONTROL)
-                || InputConstants.isKeyDown(InputConstants.KEY_RCONTROL);
     }
 
     private static void open(Minecraft client) {

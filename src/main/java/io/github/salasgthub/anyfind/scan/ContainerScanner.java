@@ -23,6 +23,9 @@ import net.minecraft.world.level.chunk.LevelChunk;
  */
 public final class ContainerScanner {
 
+    /** Upper bound per scan, so a huge zone cannot stall the server thread. */
+    public static final int MAX_CONTAINERS = 2000;
+
     private ContainerScanner() {
     }
 
@@ -57,11 +60,18 @@ public final class ContainerScanner {
                 if (chunk == null) {
                     continue;
                 }
+                // Checking structures block by block is the costly part, and most chunks have none at all.
+                boolean chunkMayHaveStructures = excludeStructures && hasStructureData(chunk);
+
                 for (BlockEntity blockEntity : chunk.getBlockEntities().values()) {
                     if (!isSupported(blockEntity) || !area.isInside(blockEntity.getBlockPos())) {
                         continue;
                     }
-                    if (excludeStructures && isInsideStructure(level, blockEntity.getBlockPos())) {
+                    if (result.containerCount() >= MAX_CONTAINERS) {
+                        result.markTruncated();
+                        return result;
+                    }
+                    if (chunkMayHaveStructures && isInsideStructure(level, blockEntity.getBlockPos())) {
                         result.markSkippedStructure();
                         continue;
                     }
@@ -70,6 +80,11 @@ public final class ContainerScanner {
             }
         }
         return result;
+    }
+
+    /** Cheap test: a chunk with no structure start or reference cannot hold a piece of one. */
+    private static boolean hasStructureData(LevelChunk chunk) {
+        return !chunk.getAllStarts().isEmpty() || !chunk.getAllReferences().isEmpty();
     }
 
     private static boolean isSupported(BlockEntity blockEntity) {

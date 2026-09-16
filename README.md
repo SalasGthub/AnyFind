@@ -33,6 +33,28 @@ el mod te guía hasta el o los cofres que lo tienen.
 
 ---
 
+## Compatibilidad con modpacks
+
+Pensado para pesar lo menos posible cuando se combina con otros mods:
+
+- **Sin mixins.** No se parchea ninguna clase del juego; todo pasa por eventos de Fabric API. Es la
+  mayor fuente de incompatibilidades entre mods y acá no existe.
+- **Sin trabajo en segundo plano.** El servidor solo escanea cuando vos abrís el buscador o corrés
+  el comando. No hay tareas por tick ni caché que mantener.
+- **El cliente no hace nada sin selección.** El tick del resaltado corta en la primera línea si no
+  elegiste ningún item.
+- **Sin bloques, items ni recetas propias.** No agrega nada al registro ni toca la generación del
+  mundo, así que no cambia mundos existentes ni choca con mods de contenido.
+- **Dependencias:** solo Fabric API. Mod Menu es opcional (`suggests`, `clientCompileOnly`).
+
+## Alcance
+
+Está pensado para **un jugador** y para **mundos compartidos con Essential Mod**. No está endurecido
+para servidores públicos: cualquier jugador puede ver el contenido de los cofres que estén dentro del
+radio, no hay límite de frecuencia de escaneo y las zonas son compartidas y las puede borrar
+cualquiera. Entre jugadores de confianza eso no molesta; si algún día se apunta a un servidor
+público, habría que agregar permisos, cooldown y configuración del lado del servidor.
+
 ## Plan del escaneo
 
 ### Limitación clave: qué puede ver cada lado
@@ -95,8 +117,9 @@ Combinar lo mejor de cada opción:
 - **Shulker boxes dentro de cofres:** leer también su contenido (fase posterior), indicando
   "cofre X → shulker".
 - **Resultado del escaneo:** índice `item → lista de (posición, cantidad)` más el total por item.
-- **Límites:** tope de contenedores por escaneo y control de permisos en servidores (quién puede
-  escanear qué zona).
+- **Límites:** máximo 2000 contenedores por escaneo (corta y avisa), y como mucho 24 posiciones por
+  item viajan al cliente, las más cercanas, para no pasarse del tamaño máximo de un paquete (1 MiB).
+  El total sí cuenta todos los contenedores encontrados.
 
 ---
 
@@ -135,15 +158,20 @@ alrededor del jugador. Muestra los 10 items con más cantidad y el contenedor m�
 - [x] Pantalla con campo de texto, filtro y grilla de items con cantidades
 - [ ] Probar en el juego
 
-**Uso:** apretá **Ctrl + F**. Se escanea un radio de 32 bloques y aparece una grilla con todos los
-items. Escribí para filtrar (busca por nombre traducido y por id, ej. `oak_log`), usá la rueda
-del mouse para desplazarte y hacé clic en un item (o Enter para el primero) para seleccionarlo.
+**Uso:** apretá **Ctrl + F**. Se escanea un radio de 32 bloques (o tu zona) y aparece una grilla con
+todos los items. Escribí para filtrar (busca por nombre traducido y por id, ej. `oak_log`), usá la
+rueda del mouse para desplazarte y hacé clic en un item (o Enter para el primero) para seleccionarlo.
+El botón **Escanear**, al lado del campo de búsqueda, vuelve a escanear sin cerrar la pantalla.
 Al seleccionar, se resaltan los cofres y se dibuja el camino hasta el más cercano (Fase 3).
 
+**Atajo configurable:**
+- La tecla se cambia en Opciones → Controles → AnyFind, o con el botón "Cambiar tecla" de la
+  pantalla de opciones del mod (que lleva directo ahí).
+- La tecla combinada se elige en las opciones del mod: **Ctrl** (por defecto), Alt, Shift o Ninguna.
+- F también es "cambiar a la otra mano" en vanilla: cuando el atajo se dispara, se cancela ese
+  cambio para que solo se abra el buscador. En el menú de controles F puede aparecer como conflicto.
+
 **Notas de implementación:**
-- La tecla se puede cambiar en Opciones → Controles → AnyFind; siempre se combina con Ctrl.
-- F también es "cambiar a la otra mano" en vanilla: con Ctrl + F se cancela ese cambio para que
-  solo se abra el buscador. En el menú de controles F puede aparecer marcada como conflicto.
 - Si se abre desde un cofre, el cofre se cierra primero.
 - `network/`: `RequestScanPayload` (C→S) y `ScanResultsPayload` (S→C).
 - `client/SearchKeyHandler`: atajo. `client/screen/ItemSearchScreen`: pantalla.
@@ -152,9 +180,9 @@ Al seleccionar, se resaltan los cofres y se dibuja el camino hasta el más cerca
 
 ### Fase 3: Guía
 - [x] Resaltado de cofres a través de paredes (caja sobre cada cofre)
-- [x] Camino de partículas que fluye desde el jugador hasta el cofre más cercano
+- [x] Camino de partículas trazado **en el suelo**, desde el jugador hasta el cofre más cercano
 - [x] Marca "física" sobre el cofre (columna de partículas)
-- [x] Se apaga solo al llegar al cofre o al vencer el tiempo
+- [x] Se apaga al **abrir** el cofre resaltado, o al vencer el tiempo
 - [ ] Probar en el juego
 - [ ] Indicador en el HUD con dirección y distancia (cuando el cofre está fuera de vista)
 
@@ -169,8 +197,16 @@ paredes.
 - El más cercano se pinta en verde y el resto en amarillo.
 - El camino son partículas `END_ROD` separadas 1,25 bloques, cuyo punto de partida avanza cada tick
   para que se vean fluyendo hacia el cofre. Antes era una flecha de gizmo, pero se veía a debug.
+- Cada punto se apoya en el piso: se sigue la línea recta horizontal y, en cada paso, se busca la
+  superficie más cercana (hasta 3 bloques para arriba y 6 para abajo) y se dibuja justo encima. Así
+  el rastro sube escaleras y baja pozos, aunque **no esquiva paredes**: marca la dirección, no una
+  ruta calculada.
 - Los gizmos quedaron solo para la caja del cofre.
 - Un cofre doble se resalta en una sola de sus mitades.
+- `client/highlight/OpenedContainerWatcher` apaga el resaltado cuando abrís uno de los contenedores
+  resaltados: guarda el bloque que clickeaste (`UseBlockCallback`) y, al abrirse una pantalla de
+  contenedor, lo compara con las posiciones resaltadas (contando las dos mitades de un cofre doble).
+  Acercarse ya no alcanza para apagarlo: hay que abrirlo.
 
 ### Fase 4: Zonas
 - [x] Comandos para crear, listar y borrar zonas
@@ -206,7 +242,8 @@ mundo) y `scan/ScanRequest`, que decide si se escanea la zona o el cubo del radi
 
 ### Compatibilidad con otros mods
 - [x] **Mod Menu**: ícono, descripción y botón de opciones propio
-- [x] Configuración en `config/anyfind.json` (radio, pedir Ctrl, abrir desde inventarios)
+- [x] Configuración en `config/anyfind.json` (radio, tecla combinada, abrir desde inventarios,
+      estructuras, resaltado, camino, marca y duración)
 - [x] **Essential Mod**: no hace falta código extra (ver abajo)
 - [ ] Probar ambos en el juego
 
@@ -235,6 +272,14 @@ Sobre **Essential Mod** (essential.gg): no comparten nada conflictivo con AnyFin
 - **2026-09-15:** Fase 1: escáner de contenedores (cofres, cofres trampa, barriles, shulker boxes)
   y comando `/anyfind scan [radio]`.
 - **2026-09-15:** Fase 2: buscador integrado con atajo Ctrl + F, paquetes de red y traducciones.
+- **2026-09-15:** Límites de seguridad: tope de 2000 contenedores por escaneo, 24 posiciones por item
+  en el paquete, se saltea el chequeo de estructuras en chunks sin estructuras y el camino de
+  partículas se dibuja cada 2 ticks.
+- **2026-09-15:** Atajo configurable: tecla combinada a elección (Ctrl/Alt/Shift/Ninguna) y acceso
+  directo a los controles del juego desde las opciones del mod.
+- **2026-09-15:** El resaltado y el camino se apagan al abrir el cofre resaltado, no al acercarse.
+- **2026-09-15:** El camino de partículas ahora se apoya en el suelo y la pantalla de búsqueda tiene
+  botón "Escanear".
 - **2026-09-15:** Fase 4: zonas con `/anyfind zone create|list|here|remove`, guardadas por dimensión,
   y el escaneo las usa cuando estás parado adentro.
 - **2026-09-15:** El escaneo ignora los cofres dentro de estructuras generadas (opción

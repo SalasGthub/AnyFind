@@ -19,6 +19,7 @@ public class ScanResult {
     private final Set<BlockPos> containers = new HashSet<>();
     private int skippedLootContainers;
     private int skippedStructureContainers;
+    private boolean truncated;
 
     void addContainer(BlockPos pos) {
         containers.add(pos);
@@ -34,6 +35,15 @@ public class ScanResult {
 
     void markSkippedStructure() {
         skippedStructureContainers++;
+    }
+
+    void markTruncated() {
+        truncated = true;
+    }
+
+    /** True when the scan hit {@link ContainerScanner#MAX_CONTAINERS} and stopped early. */
+    public boolean truncated() {
+        return truncated;
     }
 
     public int skippedStructureContainers() {

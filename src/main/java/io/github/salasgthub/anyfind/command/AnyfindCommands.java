@@ -3,6 +3,7 @@ package io.github.salasgthub.anyfind.command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
+import io.github.salasgthub.anyfind.scan.ContainerScanner;
 import io.github.salasgthub.anyfind.scan.ScanRequest;
 import io.github.salasgthub.anyfind.scan.ScanResult;
 import net.minecraft.ChatFormatting;
@@ -54,6 +55,10 @@ public final class AnyfindCommands {
         if (result.skippedLootContainers() > 0) {
             source.sendSuccess(() -> Component.literal("  " + result.skippedLootContainers()
                     + " contenedores con loot sin generar fueron ignorados").withStyle(ChatFormatting.GRAY), false);
+        }
+        if (result.truncated()) {
+            source.sendSuccess(() -> Component.literal("  El escaneo se cortó en "
+                    + ContainerScanner.MAX_CONTAINERS + " contenedores").withStyle(ChatFormatting.GRAY), false);
         }
         if (result.skippedStructureContainers() > 0) {
             source.sendSuccess(() -> Component.literal("  " + result.skippedStructureContainers()

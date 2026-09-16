@@ -1,10 +1,13 @@
 package io.github.salasgthub.anyfind.client.config;
 
+import io.github.salasgthub.anyfind.client.SearchKeyHandler;
+import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CycleButton;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.options.controls.KeyBindsScreen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
@@ -28,7 +31,7 @@ public class AnyfindConfigScreen extends Screen {
     @Override
     protected void init() {
         int left = (width - WIDGET_WIDTH) / 2;
-        int top = Math.max(32, height / 2 - 5 * (WIDGET_HEIGHT + SPACING) / 2 - 2 * (WIDGET_HEIGHT + SPACING));
+        int top = Math.max(32, height / 2 - 9 * (WIDGET_HEIGHT + SPACING) / 2);
 
         addRenderableWidget(CycleButton.builder((Integer radius) -> Component.literal(radius + " "
                         + Component.translatable("screen.anyfind.config.blocks").getString()), config.scanRadius)
@@ -38,11 +41,13 @@ public class AnyfindConfigScreen extends Screen {
                         Component.translatable("screen.anyfind.config.radius"),
                         (button, radius) -> config.scanRadius = radius));
 
-        addRenderableWidget(CycleButton.onOffBuilder(config.requireCtrl)
-                .withTooltip(value -> Tooltip.create(Component.translatable("screen.anyfind.config.ctrl.tooltip")))
+        addRenderableWidget(CycleButton.builder(KeyModifier::label, config.modifier)
+                .withValues(KeyModifier.values())
+                .withTooltip(value -> Tooltip.create(Component.translatable("screen.anyfind.config.modifier.tooltip",
+                        KeyMappingHelper.getBoundKeyOf(SearchKeyHandler.OPEN_SEARCH).getDisplayName())))
                 .create(left, rowTop(top, 1), WIDGET_WIDTH, WIDGET_HEIGHT,
-                        Component.translatable("screen.anyfind.config.ctrl"),
-                        (button, value) -> config.requireCtrl = value));
+                        Component.translatable("screen.anyfind.config.modifier"),
+                        (button, value) -> config.modifier = value));
 
         addRenderableWidget(CycleButton.onOffBuilder(config.openFromContainers)
                 .withTooltip(value -> Tooltip.create(Component.translatable("screen.anyfind.config.containers.tooltip")))
@@ -81,6 +86,17 @@ public class AnyfindConfigScreen extends Screen {
                 .create(left, rowTop(top, 7), WIDGET_WIDTH, WIDGET_HEIGHT,
                         Component.translatable("screen.anyfind.config.duration"),
                         (button, seconds) -> config.highlightSeconds = seconds));
+
+        addRenderableWidget(Button.builder(
+                        Component.translatable("screen.anyfind.config.rebind",
+                                KeyMappingHelper.getBoundKeyOf(SearchKeyHandler.OPEN_SEARCH).getDisplayName()),
+                        button -> {
+                            config.save();
+                            minecraft.gui.setScreen(new KeyBindsScreen(this, minecraft.options));
+                        })
+                .tooltip(Tooltip.create(Component.translatable("screen.anyfind.config.rebind.tooltip")))
+                .bounds(left, rowTop(top, 8), WIDGET_WIDTH, WIDGET_HEIGHT)
+                .build());
 
         addRenderableWidget(Button.builder(CommonComponents.GUI_DONE, button -> onClose())
                 .bounds(left, height - 32, WIDGET_WIDTH, WIDGET_HEIGHT)

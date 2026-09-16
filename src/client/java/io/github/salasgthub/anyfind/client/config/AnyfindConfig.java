@@ -30,8 +30,8 @@ public class AnyfindConfig {
 
     /** How far around the player the server scans. */
     public int scanRadius = 32;
-    /** Whether the search key needs Ctrl held down (avoids clashing with the vanilla use of the key). */
-    public boolean requireCtrl = true;
+    /** Key held together with the search key (avoids clashing with the vanilla use of that key). */
+    public KeyModifier modifier = KeyModifier.CTRL;
     /** Ignore containers inside generated structures, so dungeon and village chests stay out of the results. */
     public boolean excludeStructures = true;
     /** Whether the search key also works while an inventory or container screen is open. */
@@ -80,6 +80,9 @@ public class AnyfindConfig {
     }
 
     private void sanitize() {
+        if (modifier == null) {
+            modifier = KeyModifier.CTRL;
+        }
         if (!RADIUS_VALUES.contains(scanRadius)) {
             scanRadius = Math.clamp(scanRadius, RADIUS_VALUES.getFirst(), RADIUS_VALUES.getLast());
         }
