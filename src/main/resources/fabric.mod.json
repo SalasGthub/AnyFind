@@ -8,7 +8,7 @@
     "salasgthub"
   ],
   "contact": {},
-  "license": "All-Rights-Reserved",
+  "license": "MIT",
   "icon": "assets/anyfind/icon.png",
   "environment": "*",
   "entrypoints": {
